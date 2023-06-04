@@ -28,7 +28,6 @@
 #define PM_SWAP                 (1ULL << 62)
 #define PM_PRESENT              (1ULL << 63)
 
-
 /** bundles a flag with its description */
 typedef struct {
     int flag_num;
@@ -136,7 +135,7 @@ void print_info(page_info info) {
     fprint_info(stdout, info);
 }
 
-flag_count get_flag_count(page_info_array infos, int flag_num) {
+flag_count get_flag_count(page_info_array infos, int flag_num, void* start) {
     flag_count ret = {};
 
     if (flag_num < 0 || flag_num > 63) {
@@ -148,14 +147,45 @@ flag_count get_flag_count(page_info_array infos, int flag_num) {
     ret.flag = flag_num;
     ret.pages_total = infos.num_pages;
 
+    int first_page = -1;
+
     for (size_t i = 0; i < infos.num_pages; i++) {
-        page_info info = infos.info[i];
+	page_info info = infos.info[i];
         if (info.kpageflags_ok) {
             ret.pages_set += (info.kpageflags & flag) == flag;
+	    if ((info.kpageflags & flag) == flag && first_page == -1) {
+		first_page = i;
+	    }
             ret.pages_available++;
         }
     }
+    if (first_page != -1) {
+    	printf("The first page to have THP flag was at index: %d\n", first_page);
+	printf("The value returned by my info function: %d\n", thp_backed_info(infos.info[first_page]));
+	printf("Starting pointer: %p\n", start);
+	printf("Pointer with THP: %p\n", start + getpagesize() * first_page);
+	printf("The value returned by my pointer function: %d\n", thp_backed_address(start + getpagesize() * first_page));
+    	printf("The value of the THP flag here was: %d\n", (infos.info[first_page].kpageflags & flag) == flag);
+    	printf("The value of the THP flag at the next index: %d\n", (infos.info[first_page + 1].kpageflags & flag) == flag);
+	printf("The value of the THP flag at the next pointer was: %d\n", thp_backed_address(start + getpagesize() * (first_page + 1)));
+    	printf("The value of the THP flag at the previous index: %d\n", (infos.info[first_page - 1].kpageflags & flag) == flag);
+	printf("The value of the THP flag at the previous pointer was: %d\n",  thp_backed_address(start + getpagesize() * (first_page - 1)));
+    }
+
     return ret;
+}
+
+// checks thp flag given pointer to page
+bool thp_backed_address(void *p) {
+
+    // THP flag
+    uint64_t flag = (1ULL << 22);
+
+    // generate page_info struct
+    page_info info = get_page_info(p);
+
+    // return page backed && huge page backed
+    return info.kpageflags_ok && ((info.kpageflags & flag) == flag);
 }
 
 /**

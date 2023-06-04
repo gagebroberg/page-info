@@ -21,6 +21,8 @@ typedef struct {
     bool softdirty;
     /* exclusively mapped, see e.g., https://patchwork.kernel.org/patch/6787921/ */
     bool exclusive;
+    /* is a part of a thp */
+    bool thp;
     /* is a file mapping */
     bool file;
     /* page is swapped out */
@@ -77,7 +79,17 @@ typedef struct {
  * for non-root users. So the ratio structure indicates both the total number of pages as
  * well as the number of pages for which the flag information was available.
  */
-flag_count get_flag_count(page_info_array infos, int flag);
+flag_count get_flag_count(page_info_array infos, int flag, void* start);
+
+/**
+ * Given a page_info object for a page, returns whether or not the page is backed by a huge page.
+ */
+bool thp_backed_info(page_info info);
+
+/**
+ * Given a page_info object for a page, returns whether or not the page is backed by a huge page.
+ */
+bool thp_backed_address(void* start);
 
 /**
  * Given the case-insensitive name of a flag, return the flag number (the index of the bit

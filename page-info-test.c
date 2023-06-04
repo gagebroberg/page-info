@@ -37,6 +37,9 @@ typedef struct {
 const advice_s advices[] = { ADVICE(MADV_HUGEPAGE), ADVICE(MADV_NORMAL), ADVICE(MADV_NOHUGEPAGE), {} };
 
 void print_for_range(void *start, void *end) {
+
+    //printf("Page count: %ld", (end - start) / getpagesize());
+
     page_info_array infos = get_info_for_range(start, end);
     fprint_ratios_noheader(stdout, infos);
     free_info_array(infos);
@@ -80,7 +83,7 @@ void do_full_table() {
 
 // printing the
 void do_one_flag_ratio(char const * name) {
-
+    int psize = getpagesize();
     int flag = flag_from_name(name);
     if (flag < 0) {
         errx(EXIT_FAILURE, "Couldn't find flag with name '%s'", name);
@@ -98,11 +101,11 @@ void do_one_flag_ratio(char const * name) {
         }
 
         flag_count count;
-        count = get_flag_count(get_info_for_range(b, b + size), flag);
+        count = get_flag_count(get_info_for_range(b, b + size), flag, b);
         printf("%7.2f MiB BEFORE %10s %"W"zu %"W"zu %"W"zu\n", (double)kib / 1024, name,
                 count.pages_set, count.pages_available - count.pages_set, count.pages_total - count.pages_available);
-        memset(b, 0x42, size);
-        count = get_flag_count(get_info_for_range(b, b + size), flag);
+	memset(b, 0x42, size);
+        count = get_flag_count(get_info_for_range(b, b + size), flag, b);
         printf("%7.2f MiB AFTER  %10s %"W"zu %"W"zu %"W"zu\n", (double)kib / 1024, name,
                 count.pages_set, count.pages_available - count.pages_set, count.pages_total - count.pages_available);
     }
